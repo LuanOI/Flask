@@ -1,16 +1,36 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
+from app import db
+from app.models.user import login_pay_load
+from pydantic import ValidationError
+from bson import objectId
 
 main_bp = Blueprint('main_bp', __name__)
 
 # Autenticação
 main_bp.route('/login', methods = ['POST'])
 def login():
-    return jsonify({'message':'Realizar login'})
+    try:
+        raw_data = request.get_json()
+        user_data = login_pay_load(**raw_data)
+    except ValidationError as e:
+        return jsonify({'error':e.errors}), 400
+    except Exception as e:
+        jsonify ({'error' : 'Erro durante a requsição do dado'}), 500   
+    
 
+    if user_data.username =='admin' and user_data.password =='123':
+        return jsonify({'message': 'Login bem-sucedido'})
+    else:
+        return jsonify({'message': 'credenciais invalidas'})
 #listagem de produtos
 @main_bp.route('/products', methods = ['GET'])
 def get_products():
-    return jsonify({'message': 'Esta é a rota de listagem de produtos'})
+    products_cursor = db.products.find({})
+    products_list = []
+    for products in products_cursor:
+        products['_id'] = str(products['_id'])
+        products_list.append(products)
+    return jsonify(products_list)
 
 
 #Criação de novos produtos
